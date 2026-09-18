@@ -9,6 +9,24 @@ document.addEventListener('DOMContentLoaded', () => {
   initCollapsibleCards();
 });
 
+/* ---------- Theme Storage Helpers ---------- */
+// localStorage doesn't always persist across file:// pages (e.g. Safari),
+// so we write to both localStorage and a cookie as fallback.
+function getTheme() {
+  try {
+    const ls = localStorage.getItem('theme');
+    if (ls) return ls;
+  } catch (e) { /* localStorage unavailable */ }
+  // Cookie fallback
+  const match = document.cookie.match(/(?:^|; )theme=(dark|light)/);
+  return match ? match[1] : null;
+}
+
+function setTheme(value) {
+  try { localStorage.setItem('theme', value); } catch (e) {}
+  document.cookie = `theme=${value};path=/;max-age=31536000;SameSite=Lax`;
+}
+
 /* ---------- Dark Mode Toggle ---------- */
 function initDarkMode() {
   const toggleDesktop = document.getElementById('dark-mode-toggle');
@@ -16,16 +34,18 @@ function initDarkMode() {
   const html = document.documentElement;
 
   // Check saved preference, then system preference
-  const saved = localStorage.getItem('theme');
+  const saved = getTheme();
   if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
     html.classList.add('dark');
+  } else {
+    html.classList.remove('dark');
   }
 
   updateToggleIcon();
 
   const handleToggle = () => {
     html.classList.toggle('dark');
-    localStorage.setItem('theme', html.classList.contains('dark') ? 'dark' : 'light');
+    setTheme(html.classList.contains('dark') ? 'dark' : 'light');
     updateToggleIcon();
   };
 
@@ -81,13 +101,13 @@ function initMobileNav() {
 /* ---------- Active Navigation Link ---------- */
 function initActiveNavLink() {
   const currentPath = window.location.pathname;
+  const currentPage = currentPath.split('/').pop() || 'index.html';
   const navLinks = document.querySelectorAll('.nav-link');
 
   navLinks.forEach(link => {
     const href = link.getAttribute('href');
-    // Match exact path or filename
-    if (currentPath.endsWith(href) || 
-        (href === 'index.html' && (currentPath.endsWith('/') || currentPath.endsWith('/index.html')))) {
+    if (href === currentPage || 
+        (href === 'index.html' && (currentPage === '' || currentPage === '/'))) {
       link.classList.add('active', 'text-orange-600', 'dark:text-orange-400', 'font-semibold');
     }
   });
